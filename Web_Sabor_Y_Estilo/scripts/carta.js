@@ -410,7 +410,7 @@ function recalculateSubtotal() {
     subtotalVal.innerText = (base + extra).toFixed(2);
 }
 
-// ============================================================ //
+/// ============================================================ //
 // FUNCIONES EXTRAS PARA REDUCIR COMPLEJIDAD COGNITIVA
 // ============================================================ //
 
@@ -454,14 +454,14 @@ function obtenerNombreExtra(selectExtra) {
     return ` + ${cleanExtra}`;
 }
 
-//Función para crear título personalizado
+// Función para crear título personalizado
 function crearTituloPersonalizado(selectBase, selectExtra) {
     const nameBase = obtenerNombreBase(selectBase);
     const nameExtra = obtenerNombreExtra(selectExtra);
     return `🛠️ Personalizado: ${nameBase}${nameExtra}`;
 }
 
-//Función para agregar o actualizar item en el carrito
+// Función para agregar o actualizar item en el carrito (CORREGIDA)
 function agregarOActualizarItemPersonalizado(customTitle, currentPrice) {
     const existingCustom = cartArray.find(item => item.name === customTitle);
     
@@ -471,10 +471,8 @@ function agregarOActualizarItemPersonalizado(customTitle, currentPrice) {
             if (typeof launchToast === "function") {
                 launchToast("¡Pedido personalizado actualizado!");
             }
-        } else {
-            if (typeof launchToast === "function") {
-                launchToast(`Máximo permitido: ${MAX_PER_ITEM} unidades`, "error");
-            }
+        } else if (typeof launchToast === "function") {
+            launchToast(`Máximo permitido: ${MAX_PER_ITEM} unidades`, "error");
         }
     } else {
         cartArray.push({
@@ -489,19 +487,18 @@ function agregarOActualizarItemPersonalizado(customTitle, currentPrice) {
     }
 }
 
-//Función para resetear el formulario personalizado
+// Función para resetear el formulario personalizado
 function resetearFormularioPersonalizado(formCreacion, subtotalVal) {
     formCreacion.reset();
     subtotalVal.innerText = "0.00";
 }
 
-//Función para notificar cambios al carrito
+// Función para notificar cambios al carrito
 function notificarCambioCarrito() {
     if (typeof syncCartView === "function") {
         syncCartView();
     }
 }
-
 //Función principal del submit (refactorizada)
 function manejarSubmitPersonalizado(e) {
     e.preventDefault();
