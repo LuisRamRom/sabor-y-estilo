@@ -576,43 +576,172 @@ if (btnSendSuggest && formSugerencia) {
 if (mobileCartToggle) {
     mobileCartToggle.addEventListener("click", () => cartAside?.classList.toggle("mobile-open"));
 }
-
 // ============================================================ //
 // VENTANA DE CALIFICACIÓN FLOTANTE
 // ============================================================ //
 
+// Constantes para almacenamiento
+const REVIEW_STORAGE_KEY = 'sabor_estilo_review_preference';
+const REVIEW_SESSION_KEY = 'sabor_estilo_review_shown';
+
+// Función para verificar si ya se mostró la review en esta sesión
+function reviewShownInSession() {
+    return sessionStorage.getItem(REVIEW_SESSION_KEY) === 'true';
+}
+
+// Función para guardar preferencia del usuario
+function guardarPreferenciaReview(accion) {
+    const data = {
+        accion: accion, // 'rated', 'later', 'never'
+        fecha: new Date().toISOString(),
+        timestamp: Date.now()
+    };
+    localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(data));
+    console.log('[Review] Preferencia guardada:', accion);
+}
+
+// Función para verificar si debemos mostrar la review
+function debeMostrarReview() {
+    // Si ya se mostró en esta sesión, no mostrar
+    if (reviewShownInSession()) {
+        console.log('[Review] Ya se mostró en esta sesión');
+        return false;
+    }
+    
+    // Verificar preferencia guardada
+    const preferencia = localStorage.getItem(REVIEW_STORAGE_KEY);
+    if (!preferencia) {
+        return true;
+    }
+    
+    try {
+        const data = JSON.parse(preferencia);
+        
+        // Si dijo "never", no mostrar nunca
+        if (data.accion === 'never') {
+            console.log('[Review] Usuario prefirió no mostrar nunca');
+            return false;
+        }
+        
+        // Si dijo "later" y pasaron más de 7 días, mostrar
+        if (data.accion === 'later') {
+            const diasPasados = (Date.now() - data.timestamp) / (1000 * 60 * 60 * 24);
+            if (diasPasados > 7) {
+                console.log('[Review] Pasaron más de 7 días, mostrar nuevamente');
+                return true;
+            }
+            console.log('[Review] Usuario pidió recordatorio en menos de 7 días');
+            return false;
+        }
+        
+        // Si dijo "rated", esperar 30 días antes de volver a preguntar
+        if (data.accion === 'rated') {
+            const diasPasados = (Date.now() - data.timestamp) / (1000 * 60 * 60 * 24);
+            if (diasPasados > 30) {
+                console.log('[Review] Pasaron más de 30 días desde la última calificación');
+                return true;
+            }
+            console.log('[Review] Usuario ya calificó recientemente');
+            return false;
+        }
+        
+        return true;
+    } catch (error) {
+        console.warn('[Review] Error al leer preferencia:', error);
+        return true;
+    }
+}
+
+// Función para marcar que ya se mostró en esta sesión
+function marcarReviewMostrada() {
+    sessionStorage.setItem(REVIEW_SESSION_KEY, 'true');
+}
+
 function triggerReviewModal() {
+    // Verificar si debemos mostrar la review
+    if (!debeMostrarReview()) {
+        console.log('[Review] Condiciones no cumplidas para mostrar review');
+        return;
+    }
+    
+    console.log('[Review] Mostrando ventana de calificación');
+    
     const reviewOverlay = document.createElement("div");
     reviewOverlay.className = "welcome-overlay";
     reviewOverlay.style.zIndex = "6000";
+    reviewOverlay.style.animation = "fadeIn 0.3s ease-out";
     reviewOverlay.innerHTML = `
-        <div class="welcome-card" style="text-align: center; border-color: #ffb400;">
-            <h3 style="color: #ffb400; margin-bottom: 12px;">⭐ ¡Tu opinión nos importa!</h3>
-            <p style="font-size: 0.9rem; color: #ccc; margin-bottom: 20px; line-height: 1.4;">
-                ¿Te gustaría tomarnos un minuto para calificar tu experiencia de compra en Sabor y Estilo?
+        <div class="welcome-card" style="text-align: center; border-color: #ffb400; animation: slideUp 0.4s ease-out; max-width: 420px;">
+            <div style="font-size: 3rem; margin-bottom: 10px;">⭐</div>
+            <h3 style="color: #ffb400; margin-bottom: 12px; font-size: 1.3rem;">¡Tu opinión nos importa!</h3>
+            <p style="font-size: 0.9rem; color: #ccc; margin-bottom: 20px; line-height: 1.5;">
+                ¿Te gustaría tomarnos un minuto para calificar tu experiencia de compra en <strong>Sabor y Estilo</strong>?
             </p>
-            <div style="display:flex; flex-direction:column; gap:10px;">
-                <button id="btn-rate-now" style="background: #ffb400; color:#000; font-weight:bold; border:none; padding:10px; border-radius:6px; cursor:pointer;">Sí, calificar</button>
-                <button id="btn-rate-later" style="background: rgba(255,255,255,0.08); color:#fff; border:none; padding:10px; border-radius:6px; cursor:pointer;">Más tarde</button>
-                <button id="btn-rate-never" style="background: transparent; color:#777; border:none; padding:5px; font-size:0.8rem; cursor:pointer; text-decoration:underline;">En otra ocasión</button>
+            <p style="font-size: 0.8rem; color: #888; margin-bottom: 18px;">
+                ⏱️ Solo te tomará 1 minuto
+            </p>
+            <div style="display:flex; flex-direction:column; gap:10px; width: 100%;">
+                <button id="btn-rate-now" style="background: #ffb400; color:#000; font-weight:bold; border:none; padding:12px; border-radius:8px; cursor:pointer; transition: all 0.2s; font-size: 1rem; width: 100%;" 
+                        onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                    ⭐ Sí, calificar ahora
+                </button>
+                <button id="btn-rate-later" style="background: rgba(255,255,255,0.08); color:#fff; border:1px solid #444; padding:10px; border-radius:8px; cursor:pointer; transition: all 0.2s; width: 100%;"
+                        onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">
+                    ⏰ Más tarde
+                </button>
+                <button id="btn-rate-never" style="background: transparent; color:#666; border:none; padding:8px; font-size:0.8rem; cursor:pointer; text-decoration:underline; width: 100%;"
+                        onmouseover="this.style.color='#888'" onmouseout="this.style.color='#666'">
+                    ❌ No volver a preguntar
+                </button>
             </div>
         </div>
     `;
     document.body.appendChild(reviewOverlay);
+    
+    // Marcar como mostrada en sesión
+    marcarReviewMostrada();
 
+    // Evento: Calificar ahora
     document.getElementById("btn-rate-now").addEventListener("click", () => {
         reviewOverlay.remove();
-        window.location.href = "../modulo_feedback/resenas.html";
+        guardarPreferenciaReview('rated');
+        launchToast("⭐ ¡Gracias por calificarnos!");
+        setTimeout(() => {
+            window.location.href = "/src/modulo_feedback/resenas.html";
+        }, 500);
     });
+    
+    // Evento: Más tarde
     document.getElementById("btn-rate-later").addEventListener("click", () => {
         reviewOverlay.remove();
-        launchToast("¡Te lo recordaremos en tu próxima visita!");
+        guardarPreferenciaReview('later');
+        launchToast("📅 Te lo recordaremos en tu próxima visita");
     });
+    
+    // Evento: No volver a preguntar
     document.getElementById("btn-rate-never").addEventListener("click", () => {
         reviewOverlay.remove();
+        guardarPreferenciaReview('never');
+        launchToast("✅ Entendido, no volveremos a preguntar");
+    });
+    
+    // Cerrar al hacer clic fuera (mejora UX)
+    reviewOverlay.addEventListener("click", (e) => {
+        if (e.target === reviewOverlay) {
+            reviewOverlay.remove();
+            launchToast("📅 Puedes calificarnos cuando quieras en la sección Reseñas");
+        }
     });
 }
 
+// ============================================================ //
+// FUNCIÓN PARA FORZAR MOSTRAR REVIEW (DESDE CONSOLA)
+// ============================================================ //
+
+function forceReviewModal() {
+    sessionStorage.removeItem(REVIEW_SESSION_KEY);
+    triggerReviewModal();
+}
 // ============================================================ //
 // FUNCIONES DE FORMATEO DE TARJETA
 // ============================================================ //
