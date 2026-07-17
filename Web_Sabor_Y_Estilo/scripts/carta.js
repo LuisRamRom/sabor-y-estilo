@@ -373,7 +373,6 @@ function syncCartView() {
 // ============================================================ //
 // AÑADIR DESDE LA CARTA TRADICIONAL
 // ============================================================ //
-
 menuItems.forEach((article) => {
     const btnAdd = article.querySelector(".btn-add");
     if (btnAdd) {
@@ -382,7 +381,7 @@ menuItems.forEach((article) => {
             const priceText = article.querySelector(".price").innerText;
             const imgEl = article.querySelector("img");
             const imgSrc = imgEl ? imgEl.src : DEFAULT_ITEM_IMG;
-            const numericalPrice = parseFloat(priceText.replace(/[^0-9.]/g, ""));
+            const numericalPrice = Number.parseFloat(priceText.replace(/[^0-9.]/g, ""));
             const existingItem = cartArray.find(item => item.name === title);
             
             if (existingItem) {
@@ -404,13 +403,13 @@ menuItems.forEach((article) => {
 // ============================================================ //
 // LÓGICA: ARMA TU PEDIDO
 // ============================================================ //
-
 function recalculateSubtotal() {
     if (!selectBase || !selectExtra || !subtotalVal) return;
-    const base = parseFloat(selectBase.value) || 0;
-    const extra = parseFloat(selectExtra.value) || 0;
+    const base = Number.parseFloat(selectBase.value) || 0;
+    const extra = Number.parseFloat(selectExtra.value) || 0;
     subtotalVal.innerText = (base + extra).toFixed(2);
 }
+
 
 if (selectBase) selectBase.addEventListener("change", recalculateSubtotal);
 if (selectExtra) selectExtra.addEventListener("change", recalculateSubtotal);
