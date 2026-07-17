@@ -4,7 +4,7 @@
 
 function requireLogin() {
     const userData = JSON.parse(localStorage.getItem('sabor_estilo_user') || 'null');
-    if (!userData || !userData.nombre) {
+    if (!userData?.nombre) {
         if (typeof launchToast === 'function') {
             launchToast('⚠️ Por favor, inicia sesión para continuar', 'error');
         } else {
