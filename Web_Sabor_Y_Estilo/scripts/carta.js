@@ -94,10 +94,9 @@ console.log("[Sistema] Inicializando Carrito de Compras de Sabor y Estilo...");
 // ============================================================ //
 // MOSTRAR USUARIO LOGUEADO
 // ============================================================ //
-
 function mostrarUsuarioLogueado() {
     const userData = JSON.parse(localStorage.getItem('sabor_estilo_user') || 'null');
-    if (userData && userData.nombre) {
+    if (userData?.nombre) {
         console.log('[Sistema] Usuario logueado:', userData.nombre);
         const nombreInput = document.getElementById('customer-name');
         if (nombreInput && !nombreInput.value) {
