@@ -614,7 +614,7 @@ function triggerReviewModal() {
 }
 
 // ============================================================ //
-// FUNCION DE FORMATEO DE TARJETA (SOLO VISUAL)
+// FUNCIONES DE FORMATEO DE TARJETA
 // ============================================================ //
 
 function formatearNumeroTarjeta(input) {
@@ -636,6 +636,75 @@ function formatearNumeroTarjeta(input) {
     }
     
     input.value = valorFormateado;
+}
+
+function formatearFechaTarjeta(input) {
+    // Eliminar todo excepto numeros
+    let valor = input.value.replace(/\D/g, '');
+    
+    // Limitar a 4 digitos (MMAA)
+    if (valor.length > 4) {
+        valor = valor.slice(0, 4);
+    }
+    
+    // Validar mes (no mayor a 12)
+    if (valor.length >= 2) {
+        const mes = parseInt(valor.slice(0, 2));
+        if (mes > 12) {
+            // Si el mes es mayor a 12, ajustar a 12
+            valor = '12' + valor.slice(2);
+        }
+        if (mes === 0) {
+            // Si el mes es 0, ajustar a 1
+            valor = '1' + valor.slice(1);
+        }
+    }
+    
+    // Agregar slash despues del mes
+    let valorFormateado = '';
+    for (let i = 0; i < valor.length; i++) {
+        if (i === 2 && valor.length > 2) {
+            valorFormateado += '/';
+        }
+        valorFormateado += valor[i];
+    }
+    
+    input.value = valorFormateado;
+}
+
+function validarNumeroTarjeta(input) {
+    const valor = input.value.replace(/\s/g, '');
+    return valor.length === 16;
+}
+
+function validarFechaTarjeta(input) {
+    const valor = input.value.replace(/\//g, '');
+    if (valor.length !== 4) return false;
+    
+    const mes = parseInt(valor.slice(0, 2));
+    const anio = parseInt(valor.slice(2, 4));
+    
+    // Validar mes (1-12) y año (año actual o posterior)
+    const fechaActual = new Date();
+    const anioActual = fechaActual.getFullYear() % 100;
+    
+    if (mes < 1 || mes > 12) return false;
+    if (anio < anioActual) return false;
+    if (anio === anioActual) {
+        const mesActual = fechaActual.getMonth() + 1;
+        if (mes < mesActual) return false;
+    }
+    
+    return true;
+}
+
+function validarCvv(input) {
+    const valor = input.value.replace(/\D/g, '');
+    return valor.length >= 3 && valor.length <= 4;
+}
+
+function validarNombreTitular(input) {
+    return input.value.trim().length >= 3;
 }
 
 // ============================================================ //
@@ -722,20 +791,24 @@ if (mainOrderForm) {
                     '<div class="input-group">' +
                         '<label style="font-size:0.75rem; color:#aaa; display:block; margin-bottom:4px;">Numero de Tarjeta</label>' +
                         '<input type="text" id="card-number" placeholder="4111 1111 1111 1111" maxlength="19" required style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:6px; box-sizing:border-box;" oninput="formatearNumeroTarjeta(this)" />' +
+                        '<span id="card-error" style="color:#ff3333; font-size:0.75rem; display:none; margin-top:4px;">Debe tener 16 digitos</span>' +
                     '</div>' +
                     '<div style="display:flex; gap:10px;">' +
                         '<div style="flex:1;">' +
                             '<label style="font-size:0.75rem; color:#aaa; display:block; margin-bottom:4px;">Fecha Vencimiento</label>' +
-                            '<input type="text" id="card-expiry" placeholder="MM/AA" maxlength="5" required style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:6px; box-sizing:border-box;" />' +
+                            '<input type="text" id="card-expiry" placeholder="MM/AA" maxlength="5" required style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:6px; box-sizing:border-box;" oninput="formatearFechaTarjeta(this)" />' +
+                            '<span id="expiry-error" style="color:#ff3333; font-size:0.75rem; display:none; margin-top:4px;">Formato MM/AA (mes valido)</span>' +
                         '</div>' +
                         '<div style="flex:1;">' +
                             '<label style="font-size:0.75rem; color:#aaa; display:block; margin-bottom:4px;">CVV</label>' +
-                            '<input type="password" id="card-cvv" placeholder="*" maxlength="4" required style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:6px; box-sizing:border-box;" />' +
+                            '<input type="password" id="card-cvv" placeholder="*" maxlength="4" required style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:6px; box-sizing:border-box;" oninput="this.value = this.value.replace(/\\D/g, \'\').slice(0, 4)" />' +
+                            '<span id="cvv-error" style="color:#ff3333; font-size:0.75rem; display:none; margin-top:4px;">3 o 4 digitos</span>' +
                         '</div>' +
                     '</div>' +
                     '<div class="input-group">' +
                         '<label style="font-size:0.75rem; color:#aaa; display:block; margin-bottom:4px;">Nombre del Titular</label>' +
                         '<input type="text" id="card-name" placeholder="Como figura en la tarjeta" required style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:6px; box-sizing:border-box; text-transform:uppercase;" />' +
+                        '<span id="name-error" style="color:#ff3333; font-size:0.75rem; display:none; margin-top:4px;">Ingresa el nombre del titular</span>' +
                     '</div>' +
                     '<div style="background: rgba(0,0,0,0.3); padding:10px; border-radius:6px; font-size:0.8rem; border:1px solid #222; margin-top:5px;">' +
                         '<div style="display:flex; justify-content:space-between; color:#888; margin-bottom:4px;">' +
@@ -765,37 +838,55 @@ if (mainOrderForm) {
         document.getElementById("form-simulated-card").addEventListener("submit", function(subEv) {
             subEv.preventDefault();
             
-            // VALIDAR QUE TODOS LOS CAMPOS ESTEN COMPLETOS
+            // Obtener campos
             const cardNumber = document.getElementById("card-number");
             const cardExpiry = document.getElementById("card-expiry");
             const cardCvv = document.getElementById("card-cvv");
             const cardName = document.getElementById("card-name");
+            const cardError = document.getElementById("card-error");
+            const expiryError = document.getElementById("expiry-error");
+            const cvvError = document.getElementById("cvv-error");
+            const nameError = document.getElementById("name-error");
+            
+            // Ocultar mensajes de error anteriores
+            cardError.style.display = "none";
+            expiryError.style.display = "none";
+            cvvError.style.display = "none";
+            nameError.style.display = "none";
             
             let camposCompletos = true;
             
-            if (!cardNumber.value.trim() || cardNumber.value.replace(/\s/g, '').length < 16) {
+            // Validar numero de tarjeta
+            if (!validarNumeroTarjeta(cardNumber)) {
                 cardNumber.style.borderColor = "#ff3333";
+                cardError.style.display = "block";
                 camposCompletos = false;
             } else {
                 cardNumber.style.borderColor = "#00a650";
             }
             
-            if (!cardExpiry.value.trim() || cardExpiry.value.length < 5) {
+            // Validar fecha de vencimiento
+            if (!validarFechaTarjeta(cardExpiry)) {
                 cardExpiry.style.borderColor = "#ff3333";
+                expiryError.style.display = "block";
                 camposCompletos = false;
             } else {
                 cardExpiry.style.borderColor = "#00a650";
             }
             
-            if (!cardCvv.value.trim() || cardCvv.value.length < 3) {
+            // Validar CVV
+            if (!validarCvv(cardCvv)) {
                 cardCvv.style.borderColor = "#ff3333";
+                cvvError.style.display = "block";
                 camposCompletos = false;
             } else {
                 cardCvv.style.borderColor = "#00a650";
             }
             
-            if (!cardName.value.trim() || cardName.value.length < 3) {
+            // Validar nombre del titular
+            if (!validarNombreTitular(cardName)) {
                 cardName.style.borderColor = "#ff3333";
+                nameError.style.display = "block";
                 camposCompletos = false;
             } else {
                 cardName.style.borderColor = "#00a650";
@@ -894,7 +985,6 @@ if (mainOrderForm) {
         });
     });
 }
-
 // ============================================================ //
 // AUTO-COMPLETAR NOMBRE DEL USUARIO AL CARGAR
 // ============================================================ //
