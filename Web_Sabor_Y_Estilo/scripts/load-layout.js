@@ -74,9 +74,6 @@ function marcarPaginaActiva() {
     });
 }
 
-/**
- * INICIALIZA LA INTERFAZ DE SESIÓN
- */
 function inicializarSesionUI() {
     const userDisplay = document.getElementById('user-display-name');
     const userBtn = document.getElementById('nav-user-btn');
@@ -85,7 +82,9 @@ function inicializarSesionUI() {
 
     const userData = JSON.parse(localStorage.getItem('sabor_estilo_user') || 'null');
 
-    if (userData && userData.nombre) {
+    const estaLogueado = userData?.nombre;
+
+    if (estaLogueado) {
         if (userDisplay) userDisplay.textContent = userData.nombre.split(' ')[0];
         if (userBtn) userBtn.classList.add('logged-in');
         if (dropdownProfile) {
@@ -108,7 +107,6 @@ function inicializarSesionUI() {
         });
     }
 }
-
 /**
  * CIERRA LA SESIÓN DEL USUARIO
  */
