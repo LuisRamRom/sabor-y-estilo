@@ -746,16 +746,17 @@ function forceReviewModal() {
 // FUNCIONES DE FORMATEO DE TARJETA
 // ============================================================ //
 
+//Función para formatear número de tarjeta (4 dígitos con espacios)
 function formatearNumeroTarjeta(input) {
-    // Eliminar todo excepto numeros
+    // Eliminar todo excepto números
     let valor = input.value.replace(/\D/g, '');
     
-    // Limitar a 16 digitos
+    // Limitar a 16 dígitos
     if (valor.length > 16) {
         valor = valor.slice(0, 16);
     }
     
-    // Agregar espacios cada 4 digitos
+    // Agregar espacios cada 4 dígitos
     let valorFormateado = '';
     for (let i = 0; i < valor.length; i++) {
         if (i > 0 && i % 4 === 0) {
@@ -767,29 +768,27 @@ function formatearNumeroTarjeta(input) {
     input.value = valorFormateado;
 }
 
+//Función para formatear fecha de tarjeta (MM/AA)
 function formatearFechaTarjeta(input) {
-    // Eliminar todo excepto numeros
+    // Eliminar todo excepto números
     let valor = input.value.replace(/\D/g, '');
     
-    // Limitar a 4 digitos (MMAA)
+    // Limitar a 4 dígitos (MMAA)
     if (valor.length > 4) {
         valor = valor.slice(0, 4);
     }
     
     // Validar mes (no mayor a 12)
     if (valor.length >= 2) {
-        const mes = parseInt(valor.slice(0, 2));
+        const mes = Number.parseInt(valor.slice(0, 2));
         if (mes > 12) {
-            // Si el mes es mayor a 12, ajustar a 12
             valor = '12' + valor.slice(2);
-        }
-        if (mes === 0) {
-            // Si el mes es 0, ajustar a 1
+        } else if (mes === 0) {
             valor = '1' + valor.slice(1);
         }
     }
     
-    // Agregar slash despues del mes
+    // Agregar slash después del mes
     let valorFormateado = '';
     for (let i = 0; i < valor.length; i++) {
         if (i === 2 && valor.length > 2) {
@@ -801,41 +800,276 @@ function formatearFechaTarjeta(input) {
     input.value = valorFormateado;
 }
 
-function validarNumeroTarjeta(input) {
-    const valor = input.value.replace(/\s/g, '');
-    return valor.length === 16;
+//Función para formatear CVV (solo números, máximo 4 dígitos)
+function formatearCVV(input) {
+    let valor = input.value.replace(/\D/g, '');
+    if (valor.length > 4) {
+        valor = valor.slice(0, 4);
+    }
+    input.value = valor;
 }
 
+//Función para capitalizar nombre del titular
+function formatearNombreTitular(input) {
+    let valor = input.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+    const palabras = valor.toLowerCase().split(' ');
+    const palabrasCapitalizadas = palabras.map(palabra => {
+        if (palabra.length === 0) return '';
+        return palabra.charAt(0).toUpperCase() + palabra.slice(1);
+    });
+    input.value = palabrasCapitalizadas.join(' ');
+}
+
+//Función para validar número de tarjeta (16 dígitos)
+function validarNumeroTarjeta(input) {
+    const valor = input.value.replace(/\s/g, '');
+    if (valor.length !== 16) return false;
+    
+    // Verificar que todos sean números
+    if (!/^\d+$/.test(valor)) return false;
+    
+    // Algoritmo de Luhn (validación adicional)
+    return validarLuhn(valor);
+}
+
+//Función para validar con algoritmo de Luhn
+function validarLuhn(numero) {
+    let sum = 0;
+    let alternar = false;
+    
+    for (let i = numero.length - 1; i >= 0; i--) {
+        let digito = Number.parseInt(numero[i]);
+        
+        if (alternar) {
+            digito *= 2;
+            if (digito > 9) {
+                digito -= 9;
+            }
+        }
+        
+        sum += digito;
+        alternar = !alternar;
+    }
+    
+    return sum % 10 === 0;
+}
+
+//Función para validar fecha de tarjeta (no expirada)
 function validarFechaTarjeta(input) {
     const valor = input.value.replace(/\//g, '');
     if (valor.length !== 4) return false;
     
-    const mes = parseInt(valor.slice(0, 2));
-    const anio = parseInt(valor.slice(2, 4));
+    const mes = Number.parseInt(valor.slice(0, 2));
+    const anio = Number.parseInt(valor.slice(2, 4));
     
-    // Validar mes (1-12) y año (año actual o posterior)
+    // Validar mes (1-12)
+    if (mes < 1 || mes > 12) return false;
+    
+    // Validar año (actual o posterior)
     const fechaActual = new Date();
     const anioActual = fechaActual.getFullYear() % 100;
+    const mesActual = fechaActual.getMonth() + 1;
     
-    if (mes < 1 || mes > 12) return false;
     if (anio < anioActual) return false;
-    if (anio === anioActual) {
-        const mesActual = fechaActual.getMonth() + 1;
-        if (mes < mesActual) return false;
-    }
+    if (anio === anioActual && mes < mesActual) return false;
     
     return true;
 }
 
-function validarCvv(input) {
+//Función para validar CVV
+function validarCVV(input) {
     const valor = input.value.replace(/\D/g, '');
     return valor.length >= 3 && valor.length <= 4;
 }
 
+//Función para validar nombre del titular
 function validarNombreTitular(input) {
-    return input.value.trim().length >= 3;
+    const valor = input.value.trim();
+    return valor.length >= 3 && /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(valor);
 }
 
+//Función para detectar tipo de tarjeta
+function detectarTipoTarjeta(numero) {
+    const num = numero.replace(/\s/g, '');
+    
+    if (num.startsWith('4')) {
+        return { tipo: 'Visa', icono: '💳' };
+    } else if (/^5[1-5]/.test(num)) {
+        return { tipo: 'Mastercard', icono: '💳' };
+    } else if (num.startsWith('34') || num.startsWith('37')) {
+        return { tipo: 'American Express', icono: '💳' };
+    } else if (num.startsWith('6')) {
+        return { tipo: 'Discover', icono: '💳' };
+    } else {
+        return { tipo: 'Desconocida', icono: '💳' };
+    }
+}
+
+//Función para mostrar ícono de tarjeta
+function mostrarIconoTarjeta(input, iconContainer) {
+    const numero = input.value;
+    const info = detectarTipoTarjeta(numero);
+    
+    if (iconContainer) {
+        const tieneNumero = numero.replace(/\s/g, '').length > 0;
+        iconContainer.textContent = tieneNumero ? `${info.icono} ${info.tipo}` : '💳';
+        iconContainer.style.display = tieneNumero ? 'block' : 'none';
+    }
+}
+
+//Función para validar todos los campos de tarjeta
+function validarCamposTarjeta(numeroInput, fechaInput, cvvInput, nombreInput) {
+    const resultados = {
+        valido: true,
+        errores: []
+    };
+    
+    // Validar número
+    if (!validarNumeroTarjeta(numeroInput)) {
+        resultados.valido = false;
+        resultados.errores.push({ campo: 'numero', mensaje: 'Número de tarjeta inválido' });
+        mostrarErrorCampo(numeroInput, '❌ Número inválido');
+    } else {
+        limpiarErrorCampo(numeroInput);
+    }
+    
+    // Validar fecha
+    if (!validarFechaTarjeta(fechaInput)) {
+        resultados.valido = false;
+        resultados.errores.push({ campo: 'fecha', mensaje: 'Fecha inválida o tarjeta expirada' });
+        mostrarErrorCampo(fechaInput, '❌ Fecha inválida');
+    } else {
+        limpiarErrorCampo(fechaInput);
+    }
+    
+    // Validar CVV
+    if (!validarCVV(cvvInput)) {
+        resultados.valido = false;
+        resultados.errores.push({ campo: 'cvv', mensaje: 'CVV inválido (3-4 dígitos)' });
+        mostrarErrorCampo(cvvInput, '❌ CVV inválido');
+    } else {
+        limpiarErrorCampo(cvvInput);
+    }
+    
+    // Validar nombre
+    if (!validarNombreTitular(nombreInput)) {
+        resultados.valido = false;
+        resultados.errores.push({ campo: 'nombre', mensaje: 'Ingresa el nombre del titular' });
+        mostrarErrorCampo(nombreInput, '❌ Nombre requerido');
+    } else {
+        limpiarErrorCampo(nombreInput);
+    }
+    
+    return resultados;
+}
+
+//Función para mostrar error en campo
+function mostrarErrorCampo(input, mensaje) {
+    if (!input) return;
+    
+    input.style.borderColor = '#ff3333';
+    input.style.boxShadow = '0 0 0 2px rgba(255,51,51,0.2)';
+    
+    // Buscar o crear mensaje de error
+    let errorMsg = input.parentElement?.querySelector('.error-msg');
+    if (!errorMsg && input.parentElement) {
+        errorMsg = document.createElement('p');
+        errorMsg.className = 'error-msg';
+        errorMsg.style.color = '#ff3333';
+        errorMsg.style.fontSize = '0.75rem';
+        errorMsg.style.marginTop = '4px';
+        errorMsg.style.marginBottom = '0';
+        input.parentElement.appendChild(errorMsg);
+    }
+    if (errorMsg) {
+        errorMsg.textContent = mensaje;
+    }
+}
+
+//Función para limpiar error en campo
+function limpiarErrorCampo(input) {
+    if (!input) return;
+    
+    input.style.borderColor = '';
+    input.style.boxShadow = '';
+    
+    const errorMsg = input.parentElement?.querySelector('.error-msg');
+    if (errorMsg) {
+        errorMsg.textContent = '';
+    }
+}
+
+//Función para limpiar todos los campos de tarjeta
+function limpiarCamposTarjeta(numeroInput, fechaInput, cvvInput, nombreInput) {
+    if (numeroInput) {
+        numeroInput.value = '';
+        limpiarErrorCampo(numeroInput);
+    }
+    if (fechaInput) {
+        fechaInput.value = '';
+        limpiarErrorCampo(fechaInput);
+    }
+    if (cvvInput) {
+        cvvInput.value = '';
+        limpiarErrorCampo(cvvInput);
+    }
+    if (nombreInput) {
+        nombreInput.value = '';
+        limpiarErrorCampo(nombreInput);
+    }
+}
+
+//Función para asignar eventos de formateo a inputs
+function asignarEventosTarjeta(numeroInput, fechaInput, cvvInput, nombreInput) {
+    // Número de tarjeta
+    if (numeroInput) {
+        numeroInput.addEventListener('input', function() {
+            formatearNumeroTarjeta(this);
+            mostrarIconoTarjeta(this, document.getElementById('icono-tarjeta'));
+        });
+        numeroInput.addEventListener('blur', function() {
+            if (this.value && !validarNumeroTarjeta(this)) {
+                mostrarErrorCampo(this, '❌ Número inválido');
+            }
+        });
+    }
+    
+    // Fecha de vencimiento
+    if (fechaInput) {
+        fechaInput.addEventListener('input', function() {
+            formatearFechaTarjeta(this);
+        });
+        fechaInput.addEventListener('blur', function() {
+            if (this.value && !validarFechaTarjeta(this)) {
+                mostrarErrorCampo(this, '❌ Fecha inválida o expirada');
+            }
+        });
+    }
+    
+    // CVV
+    if (cvvInput) {
+        cvvInput.addEventListener('input', function() {
+            formatearCVV(this);
+        });
+        cvvInput.addEventListener('blur', function() {
+            if (this.value && !validarCVV(this)) {
+                mostrarErrorCampo(this, '❌ CVV inválido (3-4 dígitos)');
+            }
+        });
+    }
+    
+    // Nombre del titular
+    if (nombreInput) {
+        nombreInput.addEventListener('input', function() {
+            formatearNombreTitular(this);
+        });
+        nombreInput.addEventListener('blur', function() {
+            if (this.value && !validarNombreTitular(this)) {
+                mostrarErrorCampo(this, '❌ Nombre del titular requerido');
+            }
+        });
+    }
+}
 // ============================================================ //
 // PASARELA MERCADO PAGO - FINALIZAR PEDIDO
 // ============================================================ //
