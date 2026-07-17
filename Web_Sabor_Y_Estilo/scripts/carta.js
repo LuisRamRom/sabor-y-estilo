@@ -410,63 +410,135 @@ function recalculateSubtotal() {
     subtotalVal.innerText = (base + extra).toFixed(2);
 }
 
+// ============================================================ //
+// FUNCIONES EXTRAS PARA REDUCIR COMPLEJIDAD COGNITIVA
+// ============================================================ //
 
+// Función para obtener el precio actual
+function obtenerPrecioActual(subtotalVal) {
+    return Number.parseFloat(subtotalVal.innerText) || 0;
+}
+
+// Función para validar la selección de base
+function validarSeleccionBase(selectBase, subtotalVal) {
+    const currentPrice = obtenerPrecioActual(subtotalVal);
+    if (selectBase.value === "0" || currentPrice <= 0) {
+        if (typeof launchToast === "function") {
+            launchToast("Por favor, selecciona una base válida.", "error");
+        } else {
+            alert("Por favor, selecciona una base válida.");
+        }
+        return false;
+    }
+    return true;
+}
+
+// Función para limpiar texto de opción
+function limpiarTextoOpcion(texto) {
+    return texto.includes("-") ? texto.split("-")[0].trim() : texto.trim();
+}
+
+// Función para obtener nombre de la base
+function obtenerNombreBase(selectBase) {
+    const rawBaseText = selectBase.options[selectBase.selectedIndex].text;
+    return limpiarTextoOpcion(rawBaseText);
+}
+
+// Función para obtener nombre del extra
+function obtenerNombreExtra(selectExtra) {
+    if (!selectExtra || selectExtra.selectedIndex <= 0) {
+        return "";
+    }
+    const rawExtraText = selectExtra.options[selectExtra.selectedIndex].text;
+    const cleanExtra = limpiarTextoOpcion(rawExtraText);
+    return ` + ${cleanExtra}`;
+}
+
+//Función para crear título personalizado
+function crearTituloPersonalizado(selectBase, selectExtra) {
+    const nameBase = obtenerNombreBase(selectBase);
+    const nameExtra = obtenerNombreExtra(selectExtra);
+    return `🛠️ Personalizado: ${nameBase}${nameExtra}`;
+}
+
+//Función para agregar o actualizar item en el carrito
+function agregarOActualizarItemPersonalizado(customTitle, currentPrice) {
+    const existingCustom = cartArray.find(item => item.name === customTitle);
+    
+    if (existingCustom) {
+        if (existingCustom.qty < MAX_PER_ITEM) {
+            existingCustom.qty++;
+            if (typeof launchToast === "function") {
+                launchToast("¡Pedido personalizado actualizado!");
+            }
+        } else {
+            if (typeof launchToast === "function") {
+                launchToast(`Máximo permitido: ${MAX_PER_ITEM} unidades`, "error");
+            }
+        }
+    } else {
+        cartArray.push({
+            name: customTitle,
+            price: currentPrice,
+            qty: 1,
+            img: "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=80&auto=format&fit=crop"
+        });
+        if (typeof launchToast === "function") {
+            launchToast("¡Pedido personalizado añadido!");
+        }
+    }
+}
+
+//Función para resetear el formulario personalizado
+function resetearFormularioPersonalizado(formCreacion, subtotalVal) {
+    formCreacion.reset();
+    subtotalVal.innerText = "0.00";
+}
+
+//Función para notificar cambios al carrito
+function notificarCambioCarrito() {
+    if (typeof syncCartView === "function") {
+        syncCartView();
+    }
+}
+
+//Función principal del submit (refactorizada)
+function manejarSubmitPersonalizado(e) {
+    e.preventDefault();
+    
+    // Validar login
+    if (!requireLogin()) {
+        return;
+    }
+    
+    // Validar selección de base
+    if (!validarSeleccionBase(selectBase, subtotalVal)) {
+        return;
+    }
+    
+    // Obtener datos
+    const currentPrice = obtenerPrecioActual(subtotalVal);
+    const customTitle = crearTituloPersonalizado(selectBase, selectExtra);
+    
+    // Agregar o actualizar en carrito
+    agregarOActualizarItemPersonalizado(customTitle, currentPrice);
+    
+    // Resetear y actualizar
+    resetearFormularioPersonalizado(formCreacion, subtotalVal);
+    notificarCambioCarrito();
+}
+
+// ============================================================ //
+// INICIALIZACIÓN DE EVENTOS
+// ============================================================ //
+
+// Eventos de cambio en selects
 if (selectBase) selectBase.addEventListener("change", recalculateSubtotal);
 if (selectExtra) selectExtra.addEventListener("change", recalculateSubtotal);
 
+// Evento de submit del formulario personalizado
 if (formCreacion) {
-    formCreacion.addEventListener("submit", (e) => {
-        e.preventDefault();
-        
-        if (!requireLogin()) {
-            return;
-        }
-        
-        const currentPrice = parseFloat(subtotalVal.innerText) || 0;
-        
-        if (selectBase.value === "0" || currentPrice <= 0) {
-            if (typeof launchToast === "function") {
-                launchToast("Por favor, selecciona una base válida.", "error");
-            } else {
-                alert("Por favor, selecciona una base válida.");
-            }
-            return;
-        }
-
-        const rawBaseText = selectBase.options[selectBase.selectedIndex].text;
-        const nameBase = rawBaseText.includes("-") ? rawBaseText.split("-")[0].trim() : rawBaseText.trim();
-        
-        let nameExtra = "";
-        if (selectExtra && selectExtra.selectedIndex > 0) {
-            const rawExtraText = selectExtra.options[selectExtra.selectedIndex].text;
-            const cleanExtra = rawExtraText.includes("-") ? rawExtraText.split("-")[0].trim() : rawExtraText.trim();
-            nameExtra = ` + ${cleanExtra}`;
-        }
-        
-        const customTitle = `🛠️ Personalizado: ${nameBase}${nameExtra}`;
-
-        const existingCustom = cartArray.find(item => item.name === customTitle);
-        if (existingCustom) {
-            if (existingCustom.qty < MAX_PER_ITEM) {
-                existingCustom.qty++;
-                if (typeof launchToast === "function") launchToast("¡Pedido personalizado actualizado!");
-            } else {
-                if (typeof launchToast === "function") launchToast(`Máximo permitido: ${MAX_PER_ITEM} unidades`, "error");
-            }
-        } else {
-            cartArray.push({
-                name: customTitle,
-                price: currentPrice,
-                qty: 1,
-                img: "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=80&auto=format&fit=crop"
-            });
-            if (typeof launchToast === "function") launchToast("¡Pedido personalizado añadido!");
-        }
-
-        formCreacion.reset();
-        subtotalVal.innerText = "0.00";
-        if (typeof syncCartView === "function") syncCartView();
-    });
+    formCreacion.addEventListener("submit", manejarSubmitPersonalizado);
 }
 
 // ============================================================ //
