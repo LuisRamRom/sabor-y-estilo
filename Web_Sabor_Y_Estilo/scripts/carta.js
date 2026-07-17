@@ -776,10 +776,8 @@ function formatearFechaTarjeta(input) {
 function validarNumeroTarjeta(input) {
     const valor = input.value.replace(/\s/g, '');
     return valor.length === 16;
-}
-
-function validarFechaTarjeta(input) {
-    const valor = input.value.replace(/\//g, '');
+}function validarFechaTarjeta(input) {
+    const valor = input.value.replaceAll('/', '');
     if (valor.length !== 4) return false;
     const mes = Number.parseInt(valor.slice(0, 2));
     const anio = Number.parseInt(valor.slice(2, 4));
@@ -802,10 +800,6 @@ function validarCvv(input) {
 function validarNombreTitular(input) {
     return input.value.trim().length >= 3;
 }
-
-// ============================================================ //
-// PASARELA MERCADO PAGO
-// ============================================================ //
 
 function validarCarritoVacio(cartArray) {
     if (cartArray.length === 0) {
@@ -870,23 +864,23 @@ function generarIdDocumento(docType) {
     return (docType === "factura" ? "FFF" : "BBB") + "-" + randomNum;
 }
 
-function obtenerDatosTicket(docType, fullDocumentId, clientName, companyVal, rucVal, deliveryType, addressVal, cartArray, totalFinal, discountAmount, activeDiscount) {
+function obtenerDatosTicket(ticketInfo) {
     const fecha = new Date();
     return {
         fecha,
         currentDate: fecha.toLocaleDateString(),
         currentTime: fecha.toLocaleTimeString(),
-        docType,
-        fullDocumentId,
-        clientName,
-        companyVal,
-        rucVal,
-        deliveryType,
-        addressVal,
-        cartArray,
-        totalFinal,
-        discountAmount,
-        activeDiscount
+        docType: ticketInfo.docType,
+        fullDocumentId: ticketInfo.fullDocumentId,
+        clientName: ticketInfo.clientName,
+        companyVal: ticketInfo.companyVal,
+        rucVal: ticketInfo.rucVal,
+        deliveryType: ticketInfo.deliveryType,
+        addressVal: ticketInfo.addressVal,
+        cartArray: ticketInfo.cartArray,
+        totalFinal: ticketInfo.totalFinal,
+        discountAmount: ticketInfo.discountAmount,
+        activeDiscount: ticketInfo.activeDiscount
     };
 }
 
@@ -898,65 +892,74 @@ function generarTicketHTML(datos) {
             '<span>S/ ' + (i.price * i.qty).toFixed(2) + '</span>' +
         '</li>';
     }).join('');
-    return String.raw`<html>
-        <head>
-            <title>${docType.toUpperCase()} - ${fullDocumentId}</title>
-            <style>
-                body { font-family: "Courier New", Courier, monospace; margin: 0; padding: 10px; color: #000; font-size: 13px; }
-                .ticket { max-width: 380px; margin: auto; padding: 10px; }
-                .center { text-align: center; }
-                .bold { font-weight: bold; }
-                .separator { border-top: 1px dashed #000; margin: 10px 0; }
-                .flex-space { display: flex; justify-content: space-between; }
-                .items-list { padding: 0; list-style: none; margin: 5px 0; }
-                .btn-print { width: 100%; padding: 10px; background: #000; color: #fff; border: none; font-weight: bold; cursor: pointer; margin-top: 15px; font-family: inherit; }
-                @media print { .btn-print { display: none; } }
-            </style>
-        </head>
-        <body>
-            <div class="ticket">
-                <h2 class="center" style="margin-bottom: 4px;">🍕 SABOR Y ESTILO</h2>
-                <p class="center" style="margin-top: 0; font-size: 11px;">SABOR Y ESTILO S.A.C.<br>AV. CENTRAL 123 - LIMA</p>
-                <div class="separator"></div>
-                <p class="bold center" style="font-size: 14px; margin: 5px 0;">${docType.toUpperCase()} ELECTRÓNICA</p>
-                <p class="center" style="margin: 0;"><b>SERIE:</b> ${fullDocumentId}</p>
-                <div class="separator"></div>
-                <p><b>FECHA EMISIÓN:</b> ${currentDate} ${currentTime}</p>
-                <p><b>CLIENTE:</b> ${docType === "factura" ? companyVal : clientName}</p>
-                ${docType === "factura" ? `<p><b>RUC:</b> ${rucVal}</p>` : ""}
-                <p><b>ENTREGA:</b> ${deliveryType === "recojo" ? "Recojo en Tienda" : "Delivery"}</p>
-                ${deliveryType === "delivery" ? `<p><b>DIRECCIÓN:</b> ${addressVal}</p>` : ""}
-                <div class="separator"></div>
-                <p class="bold">DETALLE DEL PEDIDO:</p>
-                <ul class="items-list">${itemsHtml}</ul>
-                <div class="separator"></div>
-                <div class="flex-space"><span>OP. GRAVADA:</span><span>S/ ${(totalFinal / 1.18).toFixed(2)}</span></div>
-                <div class="flex-space"><span>I.G.V. (18%):</span><span>S/ ${(totalFinal - (totalFinal / 1.18)).toFixed(2)}</span></div>
-                ${activeDiscount > 0 ? `<div class="flex-space" style="color: red;"><span>DSCTO APLICADO:</span><span>-S/ ${discountAmount.toFixed(2)}</span></div>` : ""}
-                <div class="flex-space bold" style="font-size: 15px; margin-top: 5px;"><span>TOTAL A PAGAR:</span><span>S/ ${totalFinal.toFixed(2)}</span></div>
-                <div class="separator"></div>
-                <p class="center" style="font-size: 11px; font-style: italic;">Representación impresa de la ${docType}.<br>¡Gracias por tu preferencia!</p>
-                <button class="btn-print" onclick="window.print()">IMPRIMIR COMPROBANTE</button>
-            </div>
-        </body>
-    </html>`;
+    return '<html>' +
+        '<head>' +
+            '<title>' + docType.toUpperCase() + ' - ' + fullDocumentId + '</title>' +
+            '<style>' +
+                'body { font-family: "Courier New", Courier, monospace; margin: 0; padding: 10px; color: #000; font-size: 13px; }' +
+                '.ticket { max-width: 380px; margin: auto; padding: 10px; }' +
+                '.center { text-align: center; }' +
+                '.bold { font-weight: bold; }' +
+                '.separator { border-top: 1px dashed #000; margin: 10px 0; }' +
+                '.flex-space { display: flex; justify-content: space-between; }' +
+                '.items-list { padding: 0; list-style: none; margin: 5px 0; }' +
+                '.btn-print { width: 100%; padding: 10px; background: #000; color: #fff; border: none; font-weight: bold; cursor: pointer; margin-top: 15px; font-family: inherit; }' +
+                '@media print { .btn-print { display: none; } }' +
+            '</style>' +
+        '</head>' +
+        '<body>' +
+            '<div class="ticket">' +
+                '<h2 class="center" style="margin-bottom: 4px;">🍕 SABOR Y ESTILO</h2>' +
+                '<p class="center" style="margin-top: 0; font-size: 11px;">SABOR Y ESTILO S.A.C.<br>AV. CENTRAL 123 - LIMA</p>' +
+                '<div class="separator"></div>' +
+                '<p class="bold center" style="font-size: 14px; margin: 5px 0;">' + docType.toUpperCase() + ' ELECTRÓNICA</p>' +
+                '<p class="center" style="margin: 0;"><b>SERIE:</b> ' + fullDocumentId + '</p>' +
+                '<div class="separator"></div>' +
+                '<p><b>FECHA EMISIÓN:</b> ' + currentDate + ' ' + currentTime + '</p>' +
+                '<p><b>CLIENTE:</b> ' + (docType === "factura" ? companyVal : clientName) + '</p>' +
+                (docType === "factura" ? '<p><b>RUC:</b> ' + rucVal + '</p>' : "") +
+                '<p><b>ENTREGA:</b> ' + (deliveryType === "recojo" ? "Recojo en Tienda" : "Delivery") + '</p>' +
+                (deliveryType === "delivery" ? '<p><b>DIRECCIÓN:</b> ' + addressVal + '</p>' : "") +
+                '<div class="separator"></div>' +
+                '<p class="bold">DETALLE DEL PEDIDO:</p>' +
+                '<ul class="items-list">' + itemsHtml + '</ul>' +
+                '<div class="separator"></div>' +
+                '<div class="flex-space"><span>OP. GRAVADA:</span><span>S/ ' + (totalFinal / 1.18).toFixed(2) + '</span></div>' +
+                '<div class="flex-space"><span>I.G.V. (18%):</span><span>S/ ' + (totalFinal - (totalFinal / 1.18)).toFixed(2) + '</span></div>' +
+                (activeDiscount > 0 ? '<div class="flex-space" style="color: red;"><span>DSCTO APLICADO:</span><span>-S/ ' + discountAmount.toFixed(2) + '</span></div>' : "") +
+                '<div class="flex-space bold" style="font-size: 15px; margin-top: 5px;"><span>TOTAL A PAGAR:</span><span>S/ ' + totalFinal.toFixed(2) + '</span></div>' +
+                '<div class="separator"></div>' +
+                '<p class="center" style="font-size: 11px; font-style: italic;">Representación impresa de la ' + docType + '.<br>¡Gracias por tu preferencia!</p>' +
+                '<button class="btn-print" onclick="window.print()">IMPRIMIR COMPROBANTE</button>' +
+            '</div>' +
+        '</body>' +
+    '</html>';
 }
 
 function mostrarTicket(datos) {
     const fullDocumentId = generarIdDocumento(datos.docType);
-    const ticketDatos = obtenerDatosTicket(
-        datos.docType, fullDocumentId, datos.clientName, datos.companyVal,
-        datos.rucVal, datos.deliveryType, datos.addressVal, datos.cartArray,
-        datos.totalFinal, datos.discountAmount, datos.activeDiscount
-    );
+    const ticketInfo = {
+        docType: datos.docType,
+        fullDocumentId: fullDocumentId,
+        clientName: datos.clientName,
+        companyVal: datos.companyVal,
+        rucVal: datos.rucVal,
+        deliveryType: datos.deliveryType,
+        addressVal: datos.addressVal,
+        cartArray: datos.cartArray,
+        totalFinal: datos.totalFinal,
+        discountAmount: datos.discountAmount,
+        activeDiscount: datos.activeDiscount
+    };
+    const ticketDatos = obtenerDatosTicket(ticketInfo);
     const ticketHTML = generarTicketHTML(ticketDatos);
     const receiptWindow = window.open("", "_blank");
     if (receiptWindow) {
+        receiptWindow.document.open();
         receiptWindow.document.write(ticketHTML);
         receiptWindow.document.close();
     }
 }
-
 function validarCamposPago(cardNumber, cardExpiry, cardCvv, cardName) {
     const cardError = document.getElementById("card-error");
     const expiryError = document.getElementById("expiry-error");
