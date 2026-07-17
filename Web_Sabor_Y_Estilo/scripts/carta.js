@@ -693,11 +693,14 @@ if (mainOrderForm) {
             
             console.log('✅ [Pedido] Pedido guardado en historial:', pedidoGuardado);
             
-            // Mostrar ticket de impresión
+          // Mostrar ticket de impresión
             const fecha = new Date();
             const currentDate = fecha.toLocaleDateString();
             const currentTime = fecha.toLocaleTimeString();
-            const fullDocumentId = `${docType === "factura" ? "FFF" : "BBB"}-${Math.floor(100000 + Math.random() * 900000)}`;
+
+        //  Generar ID seguro
+            const randomNum = String(crypto.getRandomValues(new Uint32Array(1))[0] % 900000 + 100000).padStart(6, '0');
+            const fullDocumentId = `${docType === "factura" ? "FFF" : "BBB"}-${randomNum}`;
 
             const receiptWindow = window.open("", "_blank");
             if (receiptWindow) {
