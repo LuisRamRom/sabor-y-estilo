@@ -747,57 +747,29 @@ function forceReviewModal() {
 // ============================================================ //
 
 function formatearNumeroTarjeta(input) {
-    // Eliminar todo excepto numeros
     let valor = input.value.replace(/\D/g, '');
-    
-    // Limitar a 16 digitos
-    if (valor.length > 16) {
-        valor = valor.slice(0, 16);
-    }
-    
-    // Agregar espacios cada 4 digitos
+    if (valor.length > 16) valor = valor.slice(0, 16);
     let valorFormateado = '';
     for (let i = 0; i < valor.length; i++) {
-        if (i > 0 && i % 4 === 0) {
-            valorFormateado += ' ';
-        }
+        if (i > 0 && i % 4 === 0) valorFormateado += ' ';
         valorFormateado += valor[i];
     }
-    
     input.value = valorFormateado;
 }
 
 function formatearFechaTarjeta(input) {
-    // Eliminar todo excepto numeros
     let valor = input.value.replace(/\D/g, '');
-    
-    // Limitar a 4 digitos (MMAA)
-    if (valor.length > 4) {
-        valor = valor.slice(0, 4);
-    }
-    
-    // Validar mes (no mayor a 12)
+    if (valor.length > 4) valor = valor.slice(0, 4);
     if (valor.length >= 2) {
-        const mes = parseInt(valor.slice(0, 2));
-        if (mes > 12) {
-            // Si el mes es mayor a 12, ajustar a 12
-            valor = '12' + valor.slice(2);
-        }
-        if (mes === 0) {
-            // Si el mes es 0, ajustar a 1
-            valor = '1' + valor.slice(1);
-        }
+        const mes = Number.parseInt(valor.slice(0, 2));
+        if (mes > 12) valor = '12' + valor.slice(2);
+        if (mes === 0) valor = '1' + valor.slice(1);
     }
-    
-    // Agregar slash despues del mes
     let valorFormateado = '';
     for (let i = 0; i < valor.length; i++) {
-        if (i === 2 && valor.length > 2) {
-            valorFormateado += '/';
-        }
+        if (i === 2 && valor.length > 2) valorFormateado += '/';
         valorFormateado += valor[i];
     }
-    
     input.value = valorFormateado;
 }
 
@@ -809,21 +781,16 @@ function validarNumeroTarjeta(input) {
 function validarFechaTarjeta(input) {
     const valor = input.value.replace(/\//g, '');
     if (valor.length !== 4) return false;
-    
-    const mes = parseInt(valor.slice(0, 2));
-    const anio = parseInt(valor.slice(2, 4));
-    
-    // Validar mes (1-12) y año (año actual o posterior)
+    const mes = Number.parseInt(valor.slice(0, 2));
+    const anio = Number.parseInt(valor.slice(2, 4));
     const fechaActual = new Date();
     const anioActual = fechaActual.getFullYear() % 100;
-    
     if (mes < 1 || mes > 12) return false;
     if (anio < anioActual) return false;
     if (anio === anioActual) {
         const mesActual = fechaActual.getMonth() + 1;
         if (mes < mesActual) return false;
     }
-    
     return true;
 }
 
@@ -836,15 +803,10 @@ function validarNombreTitular(input) {
     return input.value.trim().length >= 3;
 }
 
-/// ============================================================ //
-// PASARELA MERCADO PAGO - FINALIZAR PEDIDO
+// ============================================================ //
+// PASARELA MERCADO PAGO
 // ============================================================ //
 
-// ============================================================ //
-// FUNCIONES EXTRAS PARA REDUCIR COMPLEJIDAD COGNITIVA
-// ============================================================ //
-
-// Función para validar carrito vacío
 function validarCarritoVacio(cartArray) {
     if (cartArray.length === 0) {
         launchToast("El carrito está vacío", "error");
@@ -854,13 +816,11 @@ function validarCarritoVacio(cartArray) {
     return true;
 }
 
-// Función para obtener y validar nombre del cliente
 function obtenerYValidarNombreCliente(clientNameInput) {
     let clientName = clientNameInput ? clientNameInput.value.trim() : "";
-    
     if (!clientName) {
         const userData = JSON.parse(localStorage.getItem('sabor_estilo_user') || 'null');
-        if (userData && userData.nombre) {
+        if (userData?.nombre) {
             clientName = userData.nombre;
             if (clientNameInput) {
                 clientNameInput.value = clientName;
@@ -868,7 +828,6 @@ function obtenerYValidarNombreCliente(clientNameInput) {
             console.log('[Pedido] Nombre auto-completado desde login:', clientName);
         }
     }
-    
     if (!clientName) {
         launchToast("Por favor, ingresa tu nombre en el campo correspondiente", "error");
         if (clientNameInput) {
@@ -881,105 +840,116 @@ function obtenerYValidarNombreCliente(clientNameInput) {
         console.log('[Pedido] Error: Nombre del cliente vacío.');
         return null;
     }
-    
     console.log('[Pedido] Cliente:', clientName);
     return clientName;
 }
 
-// Función para obtener datos del pedido
 function obtenerDatosPedido(receiptTypeSelect, rucInput, companyInput, deliverySelect, addressInput) {
     const docType = receiptTypeSelect ? receiptTypeSelect.value : "boleta";
     const rucVal = rucInput ? rucInput.value.trim() : "";
     const companyVal = companyInput ? companyInput.value.trim() : "";
     const deliveryType = deliverySelect ? deliverySelect.value : "recojo";
     const addressVal = addressInput ? addressInput.value.trim() : "";
-    
     return { docType, rucVal, companyVal, deliveryType, addressVal };
 }
 
-// Función para calcular totales del pedido
 function calcularTotalesPedido(cartArray, activeDiscount) {
     const rawSubtotal = cartArray.reduce(function(sum, item) {
         return sum + (item.price * item.qty);
     }, 0);
     const discountAmount = rawSubtotal * activeDiscount;
     const totalFinal = rawSubtotal - discountAmount;
-    
     console.log('[Pedido] Subtotal:', rawSubtotal);
     console.log('[Pedido] Descuento:', discountAmount);
     console.log('[Pedido] Total final:', totalFinal);
-    
     return { rawSubtotal, discountAmount, totalFinal };
 }
 
-// Función para generar ID de documento seguro
 function generarIdDocumento(docType) {
     const randomNum = String(crypto.getRandomValues(new Uint32Array(1))[0] % 900000 + 100000).padStart(6, '0');
     return (docType === "factura" ? "FFF" : "BBB") + "-" + randomNum;
 }
 
-// Función para generar HTML del ticket
-function generarTicketHTML(docType, fullDocumentId, clientName, companyVal, rucVal, deliveryType, addressVal, cartArray, totalFinal, discountAmount, activeDiscount) {
+function obtenerDatosTicket(docType, fullDocumentId, clientName, companyVal, rucVal, deliveryType, addressVal, cartArray, totalFinal, discountAmount, activeDiscount) {
     const fecha = new Date();
-    const currentDate = fecha.toLocaleDateString();
-    const currentTime = fecha.toLocaleTimeString();
-    
-    return '<html>' +
-        '<head>' +
-            '<title>' + docType.toUpperCase() + ' - ' + fullDocumentId + '</title>' +
-            '<style>' +
-                'body { font-family: "Courier New", Courier, monospace; margin: 0; padding: 10px; color: #000; font-size: 13px; }' +
-                '.ticket { max-width: 380px; margin: auto; padding: 10px; }' +
-                '.center { text-align: center; }' +
-                '.bold { font-weight: bold; }' +
-                '.separator { border-top: 1px dashed #000; margin: 10px 0; }' +
-                '.flex-space { display: flex; justify-content: space-between; }' +
-                '.items-list { padding: 0; list-style: none; margin: 5px 0; }' +
-                '.btn-print { width: 100%; padding: 10px; background: #000; color: #fff; border: none; font-weight: bold; cursor: pointer; margin-top: 15px; font-family: inherit; }' +
-                '@media print { .btn-print { display: none; } }' +
-            '</style>' +
-        '</head>' +
-        '<body>' +
-            '<div class="ticket">' +
-                '<h2 class="center" style="margin-bottom: 4px;">🍕 SABOR Y ESTILO</h2>' +
-                '<p class="center" style="margin-top: 0; font-size: 11px;">SABOR Y ESTILO S.A.C.<br>AV. CENTRAL 123 - LIMA</p>' +
-                '<div class="separator"></div>' +
-                '<p class="bold center" style="font-size: 14px; margin: 5px 0;">' + docType.toUpperCase() + ' ELECTRÓNICA</p>' +
-                '<p class="center" style="margin: 0;"><b>SERIE:</b> ' + fullDocumentId + '</p>' +
-                '<div class="separator"></div>' +
-                '<p><b>FECHA EMISIÓN:</b> ' + currentDate + ' ' + currentTime + '</p>' +
-                '<p><b>CLIENTE:</b> ' + (docType === "factura" ? companyVal : clientName) + '</p>' +
-                (docType === "factura" ? '<p><b>RUC:</b> ' + rucVal + '</p>' : "") +
-                '<p><b>ENTREGA:</b> ' + (deliveryType === "recojo" ? "Recojo en Tienda" : "Delivery") + '</p>' +
-                (deliveryType === "delivery" ? '<p><b>DIRECCIÓN:</b> ' + addressVal + '</p>' : "") +
-                '<div class="separator"></div>' +
-                '<p class="bold">DETALLE DEL PEDIDO:</p>' +
-                '<ul class="items-list">' +
-                    cartArray.map(function(i) {
-                        return '<li class="flex-space" style="margin-bottom: 5px;">' +
-                            '<span>' + i.qty + ' x ' + i.name + '</span>' +
-                            '<span>S/ ' + (i.price * i.qty).toFixed(2) + '</span>' +
-                        '</li>';
-                    }).join("") +
-                '</ul>' +
-                '<div class="separator"></div>' +
-                '<div class="flex-space"><span>OP. GRAVADA:</span><span>S/ ' + (totalFinal / 1.18).toFixed(2) + '</span></div>' +
-                '<div class="flex-space"><span>I.G.V. (18%):</span><span>S/ ' + (totalFinal - (totalFinal / 1.18)).toFixed(2) + '</span></div>' +
-                (activeDiscount > 0 ? '<div class="flex-space" style="color: red;"><span>DSCTO APLICADO:</span><span>-S/ ' + discountAmount.toFixed(2) + '</span></div>' : "") +
-                '<div class="flex-space bold" style="font-size: 15px; margin-top: 5px;"><span>TOTAL A PAGAR:</span><span>S/ ' + totalFinal.toFixed(2) + '</span></div>' +
-                '<div class="separator"></div>' +
-                '<p class="center" style="font-size: 11px; font-style: italic;">Representación impresa de la ' + docType + '.<br>¡Gracias por tu preferencia!</p>' +
-                '<button class="btn-print" onclick="window.print()">IMPRIMIR COMPROBANTE</button>' +
-            '</div>' +
-        '</body>' +
-    '</html>';
+    return {
+        fecha,
+        currentDate: fecha.toLocaleDateString(),
+        currentTime: fecha.toLocaleTimeString(),
+        docType,
+        fullDocumentId,
+        clientName,
+        companyVal,
+        rucVal,
+        deliveryType,
+        addressVal,
+        cartArray,
+        totalFinal,
+        discountAmount,
+        activeDiscount
+    };
 }
 
-// Función para mostrar el ticket
-function mostrarTicket(docType, clientName, companyVal, rucVal, deliveryType, addressVal, cartArray, totalFinal, discountAmount, activeDiscount) {
-    const fullDocumentId = generarIdDocumento(docType);
-    const ticketHTML = generarTicketHTML(docType, fullDocumentId, clientName, companyVal, rucVal, deliveryType, addressVal, cartArray, totalFinal, discountAmount, activeDiscount);
-    
+function generarTicketHTML(datos) {
+    const { docType, fullDocumentId, clientName, companyVal, rucVal, deliveryType, addressVal, cartArray, totalFinal, discountAmount, activeDiscount, currentDate, currentTime } = datos;
+    const itemsHtml = cartArray.map(function(i) {
+        return '<li class="flex-space" style="margin-bottom: 5px;">' +
+            '<span>' + i.qty + ' x ' + i.name + '</span>' +
+            '<span>S/ ' + (i.price * i.qty).toFixed(2) + '</span>' +
+        '</li>';
+    }).join('');
+    return String.raw`<html>
+        <head>
+            <title>${docType.toUpperCase()} - ${fullDocumentId}</title>
+            <style>
+                body { font-family: "Courier New", Courier, monospace; margin: 0; padding: 10px; color: #000; font-size: 13px; }
+                .ticket { max-width: 380px; margin: auto; padding: 10px; }
+                .center { text-align: center; }
+                .bold { font-weight: bold; }
+                .separator { border-top: 1px dashed #000; margin: 10px 0; }
+                .flex-space { display: flex; justify-content: space-between; }
+                .items-list { padding: 0; list-style: none; margin: 5px 0; }
+                .btn-print { width: 100%; padding: 10px; background: #000; color: #fff; border: none; font-weight: bold; cursor: pointer; margin-top: 15px; font-family: inherit; }
+                @media print { .btn-print { display: none; } }
+            </style>
+        </head>
+        <body>
+            <div class="ticket">
+                <h2 class="center" style="margin-bottom: 4px;">🍕 SABOR Y ESTILO</h2>
+                <p class="center" style="margin-top: 0; font-size: 11px;">SABOR Y ESTILO S.A.C.<br>AV. CENTRAL 123 - LIMA</p>
+                <div class="separator"></div>
+                <p class="bold center" style="font-size: 14px; margin: 5px 0;">${docType.toUpperCase()} ELECTRÓNICA</p>
+                <p class="center" style="margin: 0;"><b>SERIE:</b> ${fullDocumentId}</p>
+                <div class="separator"></div>
+                <p><b>FECHA EMISIÓN:</b> ${currentDate} ${currentTime}</p>
+                <p><b>CLIENTE:</b> ${docType === "factura" ? companyVal : clientName}</p>
+                ${docType === "factura" ? `<p><b>RUC:</b> ${rucVal}</p>` : ""}
+                <p><b>ENTREGA:</b> ${deliveryType === "recojo" ? "Recojo en Tienda" : "Delivery"}</p>
+                ${deliveryType === "delivery" ? `<p><b>DIRECCIÓN:</b> ${addressVal}</p>` : ""}
+                <div class="separator"></div>
+                <p class="bold">DETALLE DEL PEDIDO:</p>
+                <ul class="items-list">${itemsHtml}</ul>
+                <div class="separator"></div>
+                <div class="flex-space"><span>OP. GRAVADA:</span><span>S/ ${(totalFinal / 1.18).toFixed(2)}</span></div>
+                <div class="flex-space"><span>I.G.V. (18%):</span><span>S/ ${(totalFinal - (totalFinal / 1.18)).toFixed(2)}</span></div>
+                ${activeDiscount > 0 ? `<div class="flex-space" style="color: red;"><span>DSCTO APLICADO:</span><span>-S/ ${discountAmount.toFixed(2)}</span></div>` : ""}
+                <div class="flex-space bold" style="font-size: 15px; margin-top: 5px;"><span>TOTAL A PAGAR:</span><span>S/ ${totalFinal.toFixed(2)}</span></div>
+                <div class="separator"></div>
+                <p class="center" style="font-size: 11px; font-style: italic;">Representación impresa de la ${docType}.<br>¡Gracias por tu preferencia!</p>
+                <button class="btn-print" onclick="window.print()">IMPRIMIR COMPROBANTE</button>
+            </div>
+        </body>
+    </html>`;
+}
+
+function mostrarTicket(datos) {
+    const fullDocumentId = generarIdDocumento(datos.docType);
+    const ticketDatos = obtenerDatosTicket(
+        datos.docType, fullDocumentId, datos.clientName, datos.companyVal,
+        datos.rucVal, datos.deliveryType, datos.addressVal, datos.cartArray,
+        datos.totalFinal, datos.discountAmount, datos.activeDiscount
+    );
+    const ticketHTML = generarTicketHTML(ticketDatos);
     const receiptWindow = window.open("", "_blank");
     if (receiptWindow) {
         receiptWindow.document.write(ticketHTML);
@@ -987,22 +957,16 @@ function mostrarTicket(docType, clientName, companyVal, rucVal, deliveryType, ad
     }
 }
 
-// Función para validar los campos del formulario de pago
 function validarCamposPago(cardNumber, cardExpiry, cardCvv, cardName) {
     const cardError = document.getElementById("card-error");
     const expiryError = document.getElementById("expiry-error");
     const cvvError = document.getElementById("cvv-error");
     const nameError = document.getElementById("name-error");
-    
-    // Ocultar mensajes de error anteriores
     cardError.style.display = "none";
     expiryError.style.display = "none";
     cvvError.style.display = "none";
     nameError.style.display = "none";
-    
     let camposCompletos = true;
-    
-    // Validar número de tarjeta
     if (!validarNumeroTarjeta(cardNumber)) {
         cardNumber.style.borderColor = "#ff3333";
         cardError.style.display = "block";
@@ -1010,8 +974,6 @@ function validarCamposPago(cardNumber, cardExpiry, cardCvv, cardName) {
     } else {
         cardNumber.style.borderColor = "#00a650";
     }
-    
-    // Validar fecha de vencimiento
     if (!validarFechaTarjeta(cardExpiry)) {
         cardExpiry.style.borderColor = "#ff3333";
         expiryError.style.display = "block";
@@ -1019,8 +981,6 @@ function validarCamposPago(cardNumber, cardExpiry, cardCvv, cardName) {
     } else {
         cardExpiry.style.borderColor = "#00a650";
     }
-    
-    // Validar CVV
     if (!validarCvv(cardCvv)) {
         cardCvv.style.borderColor = "#ff3333";
         cvvError.style.display = "block";
@@ -1028,8 +988,6 @@ function validarCamposPago(cardNumber, cardExpiry, cardCvv, cardName) {
     } else {
         cardCvv.style.borderColor = "#00a650";
     }
-    
-    // Validar nombre del titular
     if (!validarNombreTitular(cardName)) {
         cardName.style.borderColor = "#ff3333";
         nameError.style.display = "block";
@@ -1037,11 +995,9 @@ function validarCamposPago(cardNumber, cardExpiry, cardCvv, cardName) {
     } else {
         cardName.style.borderColor = "#00a650";
     }
-    
     return camposCompletos;
 }
 
-// Función para limpiar después del pedido
 function limpiarDespuesPedido(mainOrderForm, rucGroup, cartAside) {
     cartArray = [];
     syncCartView();
@@ -1050,113 +1006,147 @@ function limpiarDespuesPedido(mainOrderForm, rucGroup, cartAside) {
     if (cartAside) cartAside.classList.remove("mobile-open");
 }
 
-// Función para crear el modal de pasarela de pago
-function crearModalPago(clientName, rawSubtotal, discountAmount, totalFinal, activeDiscount, docType, companyVal, rucVal, deliveryType, addressVal, mainOrderForm, rucGroup, cartAside) {
-    
+function crearModalPago(datos) {
+    const { clientName, rawSubtotal, discountAmount, totalFinal, activeDiscount, docType, companyVal, rucVal, deliveryType, addressVal, mainOrderForm, rucGroup, cartAside } = datos;
     const checkoutModal = document.createElement("div");
     checkoutModal.className = "welcome-overlay";
     checkoutModal.style.zIndex = "5500";
-    checkoutModal.innerHTML = 
-        '<div class="welcome-card" style="max-width: 420px; border: 1px solid #00a650; background: #121212; text-align: left;">' +
-            '<div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:15px;">' +
-                '<span style="font-size:1.5rem;">💳</span>' +
-                '<h3 style="color:#00a650; margin:0; font-size: 1.15rem;">Pasarela Mercado Pago</h3>' +
-            '</div>' +
-            '<div style="text-align:center; margin-bottom:15px; padding:10px; background:rgba(0,166,80,0.1); border-radius:6px;">' +
-                '<p style="color:#00a650; font-weight:bold;">👤 ' + clientName + '</p>' +
-            '</div>' +
-            '<form id="form-simulated-card" style="display:flex; flex-direction:column; gap:12px;">' +
-                '<div class="input-group">' +
-                    '<label style="font-size:0.75rem; color:#aaa; display:block; margin-bottom:4px;">Número de Tarjeta</label>' +
-                    '<input type="text" id="card-number" placeholder="4111 1111 1111 1111" maxlength="19" required style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:6px; box-sizing:border-box;" oninput="formatearNumeroTarjeta(this)" />' +
-                    '<span id="card-error" style="color:#ff3333; font-size:0.75rem; display:none; margin-top:4px;">❌ Debe tener 16 dígitos</span>' +
-                '</div>' +
-                '<div style="display:flex; gap:10px;">' +
-                    '<div style="flex:1;">' +
-                        '<label style="font-size:0.75rem; color:#aaa; display:block; margin-bottom:4px;">F. Vencimiento</label>' +
-                        '<input type="text" id="card-expiry" placeholder="MM/AA" maxlength="5" required style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:6px; box-sizing:border-box;" oninput="formatearFechaTarjeta(this)" />' +
-                        '<span id="expiry-error" style="color:#ff3333; font-size:0.75rem; display:none; margin-top:4px;">❌ Formato MM/AA</span>' +
-                    '</div>' +
-                    '<div style="flex:1;">' +
-                        '<label style="font-size:0.75rem; color:#aaa; display:block; margin-bottom:4px;">CVV</label>' +
-                        '<input type="password" id="card-cvv" placeholder="***" maxlength="4" required style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:6px; box-sizing:border-box;" oninput="this.value = this.value.replace(/\\D/g, \'\').slice(0, 4)" />' +
-                        '<span id="cvv-error" style="color:#ff3333; font-size:0.75rem; display:none; margin-top:4px;">❌ 3 o 4 dígitos</span>' +
-                    '</div>' +
-                '</div>' +
-                '<div class="input-group">' +
-                    '<label style="font-size:0.75rem; color:#aaa; display:block; margin-bottom:4px;">Nombre del Titular</label>' +
-                    '<input type="text" id="card-name" placeholder="Como figura en la tarjeta" required style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:6px; box-sizing:border-box; text-transform:uppercase;" />' +
-                    '<span id="name-error" style="color:#ff3333; font-size:0.75rem; display:none; margin-top:4px;">❌ Ingresa el nombre</span>' +
-                '</div>' +
-                '<div style="background: rgba(0,0,0,0.3); padding:10px; border-radius:6px; font-size:0.8rem; border:1px solid #222; margin-top:5px;">' +
-                    '<div style="display:flex; justify-content:space-between; color:#888; margin-bottom:4px;">' +
-                        '<span>Subtotal:</span><span>S/ ' + rawSubtotal.toFixed(2) + '</span>' +
-                    '</div>' +
-                    (activeDiscount > 0 ? 
-                        '<div style="display:flex; justify-content:space-between; color:#ff6b6b; margin-bottom:4px;">' +
-                            '<span>Descuento:</span><span>-S/ ' + discountAmount.toFixed(2) + '</span>' +
-                        '</div>' : '') +
-                    '<div style="display:flex; justify-content:space-between; font-weight:bold; color:#fff; font-size:0.9rem;">' +
-                        '<span>Total a debitar:</span><span style="color:#00a650;">S/ ' + totalFinal.toFixed(2) + '</span>' +
-                    '</div>' +
-                '</div>' +
-                '<div style="display:flex; gap:10px; margin-top:10px;">' +
-                    '<button type="button" id="btn-cancel-pay" style="flex:1; background:transparent; border:1px solid #555; color:#aaa; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold;">Cancelar</button>' +
-                    '<button type="submit" id="btn-pay-now" style="flex:2; background:#00a650; color:#fff; font-weight:bold; border:none; padding:10px; border-radius:6px; cursor:pointer;">PAGAR AHORA</button>' +
-                '</div>' +
-            '</form>' +
-        '</div>';
+    checkoutModal.innerHTML = String.raw`
+        <div class="welcome-card" style="max-width: 420px; border: 1px solid #00a650; background: #121212; text-align: left;">
+            <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:15px;">
+                <span style="font-size:1.5rem;">💳</span>
+                <h3 style="color:#00a650; margin:0; font-size: 1.15rem;">Pasarela Mercado Pago</h3>
+            </div>
+            <div style="text-align:center; margin-bottom:15px; padding:10px; background:rgba(0,166,80,0.1); border-radius:6px;">
+                <p style="color:#00a650; font-weight:bold;">👤 ${clientName}</p>
+            </div>
+            <form id="form-simulated-card" style="display:flex; flex-direction:column; gap:12px;">
+                <div class="input-group">
+                    <label style="font-size:0.75rem; color:#aaa; display:block; margin-bottom:4px;">Número de Tarjeta</label>
+                    <input type="text" id="card-number" placeholder="4111 1111 1111 1111" maxlength="19" required style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:6px; box-sizing:border-box;" oninput="formatearNumeroTarjeta(this)" />
+                    <span id="card-error" style="color:#ff3333; font-size:0.75rem; display:none; margin-top:4px;">❌ Debe tener 16 dígitos</span>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1;">
+                        <label style="font-size:0.75rem; color:#aaa; display:block; margin-bottom:4px;">F. Vencimiento</label>
+                        <input type="text" id="card-expiry" placeholder="MM/AA" maxlength="5" required style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:6px; box-sizing:border-box;" oninput="formatearFechaTarjeta(this)" />
+                        <span id="expiry-error" style="color:#ff3333; font-size:0.75rem; display:none; margin-top:4px;">❌ Formato MM/AA</span>
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:0.75rem; color:#aaa; display:block; margin-bottom:4px;">CVV</label>
+                        <input type="password" id="card-cvv" placeholder="***" maxlength="4" required style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:6px; box-sizing:border-box;" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 4)" />
+                        <span id="cvv-error" style="color:#ff3333; font-size:0.75rem; display:none; margin-top:4px;">❌ 3 o 4 dígitos</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label style="font-size:0.75rem; color:#aaa; display:block; margin-bottom:4px;">Nombre del Titular</label>
+                    <input type="text" id="card-name" placeholder="Como figura en la tarjeta" required style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:6px; box-sizing:border-box; text-transform:uppercase;" />
+                    <span id="name-error" style="color:#ff3333; font-size:0.75rem; display:none; margin-top:4px;">❌ Ingresa el nombre</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.3); padding:10px; border-radius:6px; font-size:0.8rem; border:1px solid #222; margin-top:5px;">
+                    <div style="display:flex; justify-content:space-between; color:#888; margin-bottom:4px;">
+                        <span>Subtotal:</span><span>S/ ${rawSubtotal.toFixed(2)}</span>
+                    </div>
+                    ${activeDiscount > 0 ? `
+                    <div style="display:flex; justify-content:space-between; color:#ff6b6b; margin-bottom:4px;">
+                        <span>Descuento:</span><span>-S/ ${discountAmount.toFixed(2)}</span>
+                    </div>` : ''}
+                    <div style="display:flex; justify-content:space-between; font-weight:bold; color:#fff; font-size:0.9rem;">
+                        <span>Total a debitar:</span><span style="color:#00a650;">S/ ${totalFinal.toFixed(2)}</span>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button type="button" id="btn-cancel-pay" style="flex:1; background:transparent; border:1px solid #555; color:#aaa; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold;">Cancelar</button>
+                    <button type="submit" id="btn-pay-now" style="flex:2; background:#00a650; color:#fff; font-weight:bold; border:none; padding:10px; border-radius:6px; cursor:pointer;">PAGAR AHORA</button>
+                </div>
+            </form>
+        </div>
+    `;
     document.body.appendChild(checkoutModal);
-    
-    // Evento: Cancelar pago
     document.getElementById("btn-cancel-pay").addEventListener("click", function() {
         checkoutModal.remove();
         launchToast("Pago cancelado", "error");
     });
-    
-    // Evento: Submit del formulario de pago
     document.getElementById("form-simulated-card").addEventListener("submit", function(subEv) {
         subEv.preventDefault();
-        
         const cardNumber = document.getElementById("card-number");
         const cardExpiry = document.getElementById("card-expiry");
         const cardCvv = document.getElementById("card-cvv");
         const cardName = document.getElementById("card-name");
-        
         if (!validarCamposPago(cardNumber, cardExpiry, cardCvv, cardName)) {
             launchToast("Por favor, completa todos los campos correctamente", "error");
             return;
         }
-        
         checkoutModal.remove();
         launchToast("✅ ¡Pago procesado exitosamente!");
-        
-        procesarPagoExitoso(docType, clientName, companyVal, rucVal, deliveryType, addressVal, cartArray, totalFinal, discountAmount, activeDiscount, mainOrderForm, rucGroup, cartAside);
+        const pedidoGuardado = guardarPedidoEnHistorial(
+            cartArray,
+            totalFinal,
+            activeDiscount,
+            addressVal,
+            deliveryType
+        );
+        console.log('[Pedido] Pedido guardado en historial:', pedidoGuardado);
+        const ticketDatos = {
+            docType, clientName, companyVal, rucVal, deliveryType, addressVal,
+            cartArray, totalFinal, discountAmount, activeDiscount
+        };
+        mostrarTicket(ticketDatos);
+        limpiarDespuesPedido(mainOrderForm, rucGroup, cartAside);
+        setTimeout(function() {
+            triggerReviewModal();
+        }, 800);
     });
 }
 
-// Función para procesar pago exitoso
-function procesarPagoExitoso(docType, clientName, companyVal, rucVal, deliveryType, addressVal, cartArray, totalFinal, discountAmount, activeDiscount, mainOrderForm, rucGroup, cartAside) {
-    
-    const pedidoGuardado = guardarPedidoEnHistorial(
-        cartArray,
-        totalFinal,
-        activeDiscount,
-        addressVal,
-        deliveryType
-    );
-    
-    console.log('[Pedido] Pedido guardado en historial:', pedidoGuardado);
-    
-    mostrarTicket(docType, clientName, companyVal, rucVal, deliveryType, addressVal, cartArray, totalFinal, discountAmount, activeDiscount);
-    
-    limpiarDespuesPedido(mainOrderForm, rucGroup, cartAside);
-    
-    setTimeout(function() {
-        triggerReviewModal();
-    }, 800);
+// ============================================================ //
+// FUNCIÓN PRINCIPAL
+// ============================================================ //
+
+if (mainOrderForm) {
+    mainOrderForm.addEventListener("submit", function(e) {
+        e.preventDefault();
+        console.log('[Pedido] Iniciando proceso de finalización...');
+        console.log('[Pedido] Carrito actual:', cartArray);
+        if (!requireLogin()) {
+            console.log('[Pedido] Usuario no logueado, cancelando.');
+            return;
+        }
+        if (!validarCarritoVacio(cartArray)) {
+            return;
+        }
+        const clientNameInput = document.getElementById("customer-name");
+        const clientName = obtenerYValidarNombreCliente(clientNameInput);
+        if (!clientName) {
+            return;
+        }
+        const { docType, rucVal, companyVal, deliveryType, addressVal } = obtenerDatosPedido(
+            receiptTypeSelect, rucInput, companyInput, deliverySelect, addressInput
+        );
+        const { rawSubtotal, discountAmount, totalFinal } = calcularTotalesPedido(cartArray, activeDiscount);
+        const datosModal = {
+            clientName, rawSubtotal, discountAmount, totalFinal, activeDiscount,
+            docType, companyVal, rucVal, deliveryType, addressVal,
+            mainOrderForm, rucGroup, cartAside
+        };
+        crearModalPago(datosModal);
+    });
 }
 
+// ============================================================ //
+// AUTO-COMPLETAR NOMBRE DEL USUARIO
+// ============================================================ //
+
+document.addEventListener('DOMContentLoaded', function() {
+    mostrarUsuarioLogueado();
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'sabor_estilo_user') {
+            mostrarUsuarioLogueado();
+        }
+    });
+});
+
+console.log('✅ [Sistema] Carrito de compras inicializado correctamente.');
 // ============================================================ //
 // FUNCIÓN PRINCIPAL (REFACTORIZADA - COMPLEJIDAD ≤ 15)
 // ============================================================ //
